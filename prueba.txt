@@ -1,0 +1,2 @@
+Este es el archivo de prueba para la cabecera Content Type de la práctica 3
+de la asignatura Protocolos de Transporte de 3º de Ingeniería Telemática.

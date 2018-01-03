@@ -24,16 +24,16 @@ import java.util.Random;
 public class HTTPSocketConnection implements Runnable{
     public static final String HTTP_Ok="200";
     public static final String HTTPStatusLine_505="HTTP/1.1 505 HTTP VERSION NOT SUPPORTED\r\n";
-    public static final String RecursoHTML_505="<html><body><h1>Versi&oacute;n HTTP no soportada</h1></body></html>";
+    public static final String RecursoHTML_505="<html><body><h1>VERSION HTTP NO SOPORTADA</h1></body></html>";
     public static final String HTTPStatusLine_404="HTTP/1.1 404 NOT FOUND\r\n";
-    public static final String RecursoHTML_404="<html><body><h1>Recurso No encontrado</h1></body></html>";
+    public static final String RecursoHTML_404="<html><body><h1>RECURSO NO ENCONTRADO</h1></body></html>";
     public static final String HTTPStatusLine_200="HTTP/1.1 200 OK\r\n";
-    public static final String HTTPStatusLine_400="HTTP/1.1 400 Bad Request\r\n";
-    public static final String RecursoHTML_400="<html><body><h1>Petici(&oacute)n incorrecta</h1></body></html>";
+    public static final String HTTPStatusLine_400="HTTP/1.1 400 BAD REQUEST\r\n";
+    public static final String RecursoHTML_400="<html><body><h1>PETICION INCORRECTA</h1></body></html>";
     public static final String HTTPStatusLine_405="HTTP/1.1 405 METHOD NOT ALLOWED\r\n";
-    public static final String RecursoHTML_405="<html><body><h1>M&eacute;todo no permitido</h1></body></html>";
+    public static final String RecursoHTML_405="<html><body><h1>METODO NO PERMITIDO</h1></body></html>";
     private Socket mSocket=null;
-    private static int comprobacion=0;
+    private static int check=0; //Para comprobar los casos de errores
     private static String cadena;
     /**
      * Se recibe el socket conectado con el cliente
@@ -61,9 +61,9 @@ public class HTTPSocketConnection implements Runnable{
                 request_line= input.readLine();
                 
                 
-                String parts[]=request_line.split(" ");
+                String parts[]=request_line.split(" "); //para tener en cuenta los espacios 
                 
-                if(parts.length==3){ //COMPROBACION DE ERRORES PARA METODO_HTTP,RECURSO,VERSION Y LONGITUD DE PETICION HTTP
+                if(parts.length==3){ //Para ver que haya 3 espacios y si no los hay realizar las operaciones siguientes, así compruebo los tipos de errores
                     if(request_line.startsWith("GET ") || request_line.startsWith("get ")){
    
                         if(!parts[2].equalsIgnoreCase("HTTP/1.1") && !parts[2].equalsIgnoreCase("HTTP/1.0") 
@@ -71,7 +71,7 @@ public class HTTPSocketConnection implements Runnable{
                             HTTP_Status_Line=HTTPStatusLine_505;
                             cadena=RecursoHTML_505;
                             HTTP_Response=cadena.getBytes();
-                            comprobacion=1;
+                            check=1;
                         }else{
                             if(parts[1].equalsIgnoreCase("/")){
                                 resourceFile="/index.html";
@@ -79,16 +79,16 @@ public class HTTPSocketConnection implements Runnable{
                                 resourceFile=parts[1];
                             }
                             String cadena2=getExtension(resourceFile);
-                            HTTP_Response=leerRecurso(resourceFile);
+                            HTTP_Response=readResource(resourceFile);
                             
-                            if(HTTP_Response==null){ //COMPROBACION SI EXISTE EL RECURSO EN EL SERVIDOR
+                            if(HTTP_Response==null){ //Aquí compruebo si existe el recurso en el servidor para dar error 404notfound en caso de no encontrarlo
                                 HTTP_Status_Line=HTTPStatusLine_404;
                                 cadena=RecursoHTML_404;
                                 HTTP_Response=cadena.getBytes();
-                                comprobacion=1;
+                                check=1;
                             }else{
                                 HTTP_Status_Line=HTTPStatusLine_200;
-                                comprobacion=0;
+                                check=0;
                             }
                         }
                         
@@ -97,7 +97,7 @@ public class HTTPSocketConnection implements Runnable{
                         HTTP_Status_Line=HTTPStatusLine_405;
                         cadena=RecursoHTML_405;
                         HTTP_Response=cadena.getBytes();
-                        comprobacion=1;
+                        check=1;
                     }
                     
                     
@@ -106,7 +106,7 @@ public class HTTPSocketConnection implements Runnable{
                     HTTP_Status_Line=HTTPStatusLine_400;
                     cadena=RecursoHTML_400;
                     HTTP_Response=cadena.getBytes();
-                    comprobacion=1;
+                    check=1;
                 }
 
               do{   
@@ -120,23 +120,23 @@ public class HTTPSocketConnection implements Runnable{
             //CABECERAS
             
             int tamaño=HTTP_Response.length;
-            
-            String connection="Connection:close\r\n"; //caecera connection
-            String contentlength="Content-length:" + String.valueOf(tamaño)+"\r\n"; // cabecera content length
-            String contenttype="";
-            String date=obtenerFecha(); //caecera date a partir del metodo obtener fecha (opcional)
-            String server="Server: Servidor de Fran y Javier\r\n";//cabecera server(opional)
-            String allow="Allow: GET\r\n"; //cabecera allow(opcional)
-            if(comprobacion==1){ //cabecera contenttype en funcion del tipo de recurso
+            //Implementación de cabeceras: 
+            String connection="Connection:close\r\n"; //CABECERA CONNECTION
+            String contentlength="Content-length:" + String.valueOf(tamaño)+"\r\n"; //CABECERA CONTENT LENGTH
+            String contenttype=""; //CABECERA CONTENT TYPE
+            String date=getDate(); //CABECERA PARA LA INFORMACIÓN DE LA FECHA Y HORA (ES OPCIONAL)
+            String server="Server: Servidor de Antonio Cortes y Daniel Mesa\r\n";//CABECERA SERVER PARA DAR INFORMACION (ES OPCIONAL)
+            String allow="Allow: GET\r\n"; //CABECERA ALLOW (ES OPCIONAL)
+            if(check==1){ //+CABECERA CONTENT TYPE, ADAPTADA PARA COMPROBAR LOS RECURSOS
                 contenttype="Content-type:text/html\r\n";
                 
             }else{
                 if(getExtension(resourceFile).equalsIgnoreCase("jpeg")){
-                     contenttype="Content-type:image/jpeg\r\n";
+                     contenttype="Content-type:image/jpeg\r\n";                    //para imagen jpeg
                 }else if(getExtension(resourceFile).equalsIgnoreCase("html")) {
-                    contenttype="Content-type:text/html; charset=utf-8\r\n"; 
+                    contenttype="Content-type:text/html; charset=utf-8\r\n";       //para html
                 }else if(getExtension(resourceFile).equalsIgnoreCase("txt")){
-                    contenttype="Content-type:text/plain\r\n";
+                    contenttype="Content-type:text/plain\r\n";                     //para texto plano
                 }
                 
             }
@@ -151,7 +151,7 @@ public class HTTPSocketConnection implements Runnable{
             output.write(cadena1.getBytes());
             output.write(HTTP_Response);
             
-            //recurso
+            //RECURSO
            
             input.close();
             output.close();
@@ -170,7 +170,7 @@ public class HTTPSocketConnection implements Runnable{
      * @return los bytes del archivo o null si este no existe
      */
     
-    public byte[] leerRecurso(String resourceFile) {
+    public byte[] readResource(String resourceFile) {
 
         String cadena="." + resourceFile;
         try {
@@ -200,73 +200,73 @@ public class HTTPSocketConnection implements Runnable{
     }
     public static String getExtension(String filename) {
 
-            String parts[]=filename.split("\\.");
+            String parts[]=filename.split("\\."); //Para separar las partes de la peticion
             int longitud=parts.length;
             
             return parts[longitud-1];
             
     }
     
-    public static String obtenerFecha(){
+    public static String getDate(){
                 
         Calendar fecha = Calendar.getInstance();
       
-       String cadena="";
-       int anio = fecha.get(Calendar.YEAR);
-       int mes = fecha.get(Calendar.MONTH);
-       int dia = fecha.get(Calendar.DAY_OF_MONTH);
-       int hora = fecha.get(Calendar.HOUR_OF_DAY);
-       int minuto = fecha.get(Calendar.MINUTE);
-       int segundo = fecha.get(Calendar.SECOND);
-       int dia2=fecha.get(Calendar.DAY_OF_WEEK);
-       String mes2="";
-       String diaSemana="";
-       if(dia2==1){
-           diaSemana="Sun";
-       }else if(dia2==2){
-           diaSemana="Mon";
-       }else if(dia2==3){
-           diaSemana="Tue";
-       }else if(dia2==4){
-           diaSemana="Wed";
-       }else if(dia2==5){
-           diaSemana="Thu";
-       }else if(dia2==6){
-           diaSemana="Fri";
-       }else if(dia2==7){
-           diaSemana="Sat";
+       String datechain="";
+       int year = fecha.get(Calendar.YEAR);
+       int month = fecha.get(Calendar.MONTH);
+       int day = fecha.get(Calendar.DAY_OF_MONTH);
+       int time = fecha.get(Calendar.HOUR_OF_DAY);
+       int minute = fecha.get(Calendar.MINUTE);
+       int second = fecha.get(Calendar.SECOND);
+       int day2=fecha.get(Calendar.DAY_OF_WEEK);
+       String month2="";
+       String dayOfWeek="";
+       if(day2==1){
+           dayOfWeek="Sun";
+       }else if(day2==2){
+           dayOfWeek="Mon";
+       }else if(day2==3){
+           dayOfWeek="Tue";
+       }else if(day2==4){
+           dayOfWeek="Wed";
+       }else if(day2==5){
+           dayOfWeek="Thu";
+       }else if(day2==6){
+           dayOfWeek="Fri";
+       }else if(day2==7){
+           dayOfWeek="Sat";
        }
        
-       if(mes==0){
-           mes2="Jan";
-       }else if(mes==1){
-           mes2="Feb";
-       }else if(mes==2){
-           mes2="Mar";
-       }else if(mes==3){
-           mes2="Apr";
-       }else if(mes==4){
-           mes2="May";
-       }else if(mes==5){
-           mes2="Jun";
-       }else if(mes==6){
-           mes2="Jul";
-       }else if(mes==7){
-           mes2="Aug";
-       }else if(mes==8){
-           mes2="Sep";
-       }else if(mes==9){
-           mes2="Oct";
-       }else if(mes==10){
-           mes2="Nov";
-       }else if(mes==11){
-           mes2="Dec";
+       if(month==0){
+           month2="Jan";
+       }else if(month==1){
+           month2="Feb";
+       }else if(month==2){
+           month2="Mar";
+       }else if(month==3){
+           month2="Apr";
+       }else if(month==4){
+           month2="May";
+       }else if(month==5){
+           month2="Jun";
+       }else if(month==6){
+           month2="Jul";
+       }else if(month==7){
+           month2="Aug";
+       }else if(month==8){
+           month2="Sep";
+       }else if(month==9){
+           month2="Oct";
+       }else if(month==10){
+           month2="Nov";
+       }else if(month==11){
+           month2="Dec";
        }
        
-       cadena="Date:" + " " + diaSemana+ "," + " " + dia + " " + mes2 + " " + anio
-               + " " + hora + ":" + minuto + ":" + segundo + " "  + "GMT" + "\r\n";
+       datechain="Date:" + " " + dayOfWeek+ "," + " " + day + " " + month2 + " " + year
+               + " " + time + ":" + minute + ":" + second + " "  + "GMT" + "\r\n";
        
-       return cadena;
+       return datechain;
       }
     
     
